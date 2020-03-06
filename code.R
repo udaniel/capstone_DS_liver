@@ -1,32 +1,3 @@
----
-title: "HarvardX Data Science Capstone Final"
-author: "Daniel Yoo"
-date: "3/6/2020"
-output: 
-    pdf_document:
-        toc: true
-        number_sections: true
----
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(cache = TRUE)
-knitr::opts_chunk$set(warning = FALSE)
-knitr::opts_chunk$set(message = FALSE)
-```
-
-# Introduction
-This is a part of the last course of HarvardX's Data Science Professional Certificate series.
-We used a publicly available dataset from UCI Machine Learning Repository, <https://archive.ics.uci.edu/ml/index.php>.
-The selected dataset includes patient records collected from North East of Andhra Pradesh, India.
-Patients with liver disease have been continuously increasing because of excessive consumption of alcohol, inhale of harmful gases, 
-intake of contaminated food, pickles and drugs.
-In this study, we aim to predict which patients have liver disease and which ones do not by using the patient records in an effort to reduce burden on doctors.
-
-# Population
-
-First, we load required packages and the dataset for our analysis.
-
-```{r packages, message=FALSE}
 # install and load packages
 if(!require(tidyverse)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
 if(!require(dplyr)) install.packages("dplyr", repos = "http://cran.us.r-project.org")
@@ -43,48 +14,16 @@ if(!require(compareGroups)) install.packages("compareGroups", repos = "http://cr
 if(!require(gridExtra)) install.packages("gridExtra", repos = "http://cran.us.r-project.org")
 if(!require(stepPlr)) install.packages("stepPlr", repos = "http://cran.us.r-project.org")
 if(!require(yardstick)) install.packages("yardstick", repos = "http://cran.us.r-project.org")
-```
 
 
-```{r data}
 # load the dataset from github repo
 liver_data <- read.csv("https://raw.githubusercontent.com/udaniel/capstone_DS_liver/master/indian_liver_patient.csv")
-```
 
-We look at the basic structure of the given data.
-
-```{r basic_eda}
 # basic structure of the dataset
 liver_data %>% dim()
 liver_data %>% head()
 str(liver_data)
-```
 
-We have 583 patients, 11 variables. Among them, 10 are independent variables and one variable is the outcome variable.
-
-Columns include:
-
-- Age of the patient
-- Gender of the patient
-- Total Bilirubin
-- Direct Bilirubin
-- Alkaline Phosphotase
-- Alamine Aminotransferase
-- Aspartate Aminotransferase
-- Total Proteins
-- Albumin
-- Albumin and Globulin Ratio
-- Dataset: field used to split the data into two sets (patient with liver disease, or no disease)
-
-The final "Dataset" variable is our outcome variable. Since we only have 10 independent variables, the feature selection process would be redundant.
-From the dataset source <https://www.kaggle.com/uciml/indian-liver-patient-records/data>, we can acknowledge that any patient whose age exceeded 89 is listed as being of age 90.
-
-
-# Exploratory Data Analysis
-
-Before proceed, we should clean the dataset little to make it more readable.
-
-```{r dataset_column}
 # properly factor the outcome variable
 liver_data$Dataset <- factor(liver_data$Dataset, levels = c(1, 2), 
                              labels = c("disease", "no_disease"))
@@ -96,23 +35,10 @@ liver_data <-
 liver_data <- 
     liver_data %>% 
     dplyr::rename(Total_Proteins = Total_Protiens)
-```
 
-
-## Univariate Analysis
-
-```{r summary}
 # summary
 summary(liver_data)
-```
 
-There are 142 female patient records and 441 male patient records. The minimum age of the recorded patient is 4 and 90 for the maximum since we considered all patients with older than 90 years old 90.
-Total bilirubin, direct bilirubin, alkaline phosphotase, alamine aminotransferase and aspartate aminotransferase look normally distributed until the 3rd quartiles. The maximum values of these variables are highly skewed; it is worth to examine those patient records. Total proteins and albumin variables look normally distributed. Albumin and globulin ratio variable has 4 NAs. We have 416 liver patient records and 167 non liver patient records.
-
-Let's look at histograms and density plots for numerical variables.
-First, we observe presumaly normally distributed numerical variables.
-
-```{r normal_plots}
 # age distribution
 liver_data %>% 
     ggplot(aes(x = Age)) +
@@ -141,11 +67,7 @@ liver_data %>%
     geom_density(lwd = 2) +
     theme_classic()
 
-```
 
-We can see that Albumin_and_Globulin_Ratio variable has some outliers.
-
-```{r abnormal_plots}
 # Total_Bilirubin distribution
 liver_data %>% 
     ggplot(aes(x = Total_Bilirubin)) +
@@ -180,14 +102,7 @@ liver_data %>%
     geom_histogram(aes(y = ..density..), binwidth = 30) +
     geom_density(lwd = 2) +
     theme_classic()
-```
 
-As we expected, we have very highly skewed distributions for these variables.
-
-
-
-Examine the highly skewed data using 90% quantile.
-```{r outliers}
 # 90% quantile
 # Albumin_and_Globulin_Ratio
 liver_data %>% 
@@ -213,50 +128,20 @@ liver_data %>%
 # Aspartate_Aminotransferase distribution
 liver_data %>% 
     filter(Aspartate_Aminotransferase > quantile(Aspartate_Aminotransferase, 0.9)) %>% summary()
-```
-
-Compare to the original data, it does not seem like we have enough evidences to call them outliers. 
 
 
-## Bivariate analysis
-
-Here, we analyze relationships among variables, especially with our outcome variable.
-
-```{r correlation}
 # correlation plot among numerical variables
 liver_data %>% 
     select_if(is.numeric) %>% 
     filter(!is.na(Albumin_and_Globulin_Ratio)) %>% 
     cor() %>% 
     corrplot()
-```
 
-Here, we do not see very unexpected results. Two bilirubin variables are highly correlated. Two aminotransferase variables are highly correlated. Albumin is highly correlated with total proteins. This is easily understandable because albumin is a kind of protein. Albumin and globulin ratio is highly correlated with albumin as expected. One thing unexpected was the negative correlation between age and albumin.
-
-
-Now, we search for statistical difference in independent variables by the outcome variable.
-```{r compareGroups}
 # calculate p-values
 comp <- compareGroups(outcome ~ ., data = liver_data)
 tab <- createTable(comp, extra.labels = c("", ""))
 tab
-```
-Student's t-test and Chi-square test were used. We found that many independent variables are statistically significant risk factors to the disease.
 
-
-# Modeling
-
-Here, we perform several different algorithms.
-We first try familiar penalized logistic linear regression. Then, we try more sophisticated yet popular algorithms, naive bayes, random forest and extreme gradient boosting tree.
-We finally use linear regression to combine all these probabilistic classifiers to maximize our performance.
-We do not use grid search for tuning the hyperparameters for the sake of simplicity. Caret handles random search generally very well.
-For discrimination, we use the most popular metric, area under the ROC curve (AUC).
-
-
-## Pre-processing
-
-We remove 4 missing values then separate the data into a train and a test sets with 80:20 ratio due to the small number observations of dataset.
-```{r data_split}
 # remove 4 missing values
 liver_data_naomit <- liver_data %>% na.omit()
 
@@ -265,9 +150,7 @@ set.seed(1)
 ind <- createDataPartition(liver_data_naomit$outcome, times = 1, p = 0.8, list = F)
 train_set <- liver_data_naomit[ind, ]
 test_set <- liver_data_naomit[-ind, ]
-```
 
-```{r traincontrol}
 # pre-process first step
 # 10-folds cross-validation to tune the models
 x <- trainControl(
@@ -276,11 +159,8 @@ x <- trainControl(
     classProbs = T,
     summaryFunction = twoClassSummary
 )
-```
 
 
-## Penalized Logistic Linear Regression
-```{r logistic}
 set.seed(1)
 # train the model
 logistic <- train(
@@ -291,14 +171,8 @@ logistic <- train(
     # we use ROC AUC as a metric
     metric = "ROC"
 )
-
 logistic
-```
 
-
-
-## Naive Bayes
-```{r nb}
 set.seed(1)
 # train the model
 nb <- train(
@@ -310,15 +184,7 @@ nb <- train(
     metric = "ROC"
 )
 nb
-```
 
-We can repeat this training for random forest and extreme gradient boosting tree. 
-However, caretEnsemble package has an efficient caretList function to keep all the models into one list. Additionally, with the list, we can create an ensemble model.
-
-## Ensemble
-
-Here, we use caretList function to perform multiple models at one time with 10-folds cross-validation with random hyperparameter search.
-```{r ensemble}
 # train multiple models at once
 set.seed(1)
 models_list <- 
@@ -338,16 +204,6 @@ model_ensemble <-
     caretEnsemble(models_list, 
                   trControl = x,
                   metric = "ROC")
-
-```
-
-
-# Results
-
-Now, it is time to check our performances on the test set.
-Note that generating an ensemble model does not always better result than the base models.
-
-```{r result}
 
 # predict probabilities
 pred_log <- predict(model_ensemble$models$plr, test_set, type = "prob")
@@ -394,29 +250,4 @@ roc_curve(data = ensemble_df_tmp, truth = truth, disease) %>%
     ggtitle("ROC plot of the ensemble model") +
     theme_classic()
 
-roc_results %>% kable()
-```
-
-The final AUCs for the models are `r round(roc_logis, 2)`, `r round(roc_nb, 2)`, `r round(roc_rf, 2)`, `r round(roc_xgbTree, 2)`, and `r round(roc_ensemble, 2)` for logistic regression, naive bayes, random forest, extreme gradient boosting tree, and ensemble model, respectively.
-We did not succeed to make an improvement by aggregating the base four models.
-
-# Conclusion
-
-In this project, we aimed to predict the liver disease status in Indian population using 10 predictors. We used the caret R package to perform multiple machine learning classifiers.
-We tuned penalized logistic regression, naive bayes, random forest, extreme gradient boosting tree with 10-folds cross-validation.
-Finally, we aggregated the four trained base models using linear regression to creat an ensemble model.
-Among them, the random forest classifier demonstrated the best performance.
-In our study, we have several drawbacks. 
-First, we did not grid hyperparameter searches for our base classifiers. Spending more time on hyperparameters would significantly improve our models.
-Second, since the distribution of the outcome variable is unbalanced, we naturally have stronger power to predict the major class, in our case, having the disease. We might need to consider methods to overcome such situation such as up-sampling or down-sampling.
-Lastly, we used a curated dataset which is considerably rare in the real world problems.
-Further hyperparameter tuning would be recommended on this project and usage of other metrics might be useful as well such as Precision-Recall AUC.
-
-
-# Acknowledgements
-This dataset was downloaded from the UCI ML Repository:
-
-Lichman, M. (2013). UCI Machine Learning Repository <https://archive.ics.uci.edu/ml/index.php>. Irvine, CA: University of California, School of Information and Computer Science.
-
-
-
+roc_results
